@@ -3,7 +3,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>CryptoNews Hub - Real-time Crypto News Aggregator</title>
     <meta name="description" content="Stay updated with the latest cryptocurrency news from top sources. Real-time RSS feed aggregation from Cointelegraph, CoinDesk, and more." />
     <meta name="author" content="CryptoNews Hub" />
@@ -17,6 +17,12 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@cryptonewshub" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <!-- Mobile app meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CryptoNews Hub" />
+    <meta name="theme-color" content="#1e1b4b" />
     
     <!-- Preconnect to external domains for better performance -->
     <link rel="preconnect" href="https://api.rss2json.com">
@@ -38,6 +44,16 @@
         }
       }(window.location))
     </script>
+    
+    <style>
+      /* Ensure safe area for devices with notches */
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+    </style>
   </head>
 
   <body>
