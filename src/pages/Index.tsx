@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ExternalLink, Clock, Rss } from "lucide-react";
+import { RefreshCw, Clock, Rss } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import NewsCard from "@/components/NewsCard";
 
 interface NewsItem {
   title: string;
@@ -122,7 +121,7 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-white">CryptoNews Hub</h1>
-                <p className="text-purple-200">Real-time cryptocurrency news aggregator</p>
+                <p className="text-purple-200">Real-time cryptocurrency news aggregator with translation</p>
               </div>
             </div>
             
@@ -169,45 +168,23 @@ const Index = () => {
           {loading ? (
             // Loading skeletons
             Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="bg-white/5 border-white/10 backdrop-blur-sm">
-                <CardHeader>
+              <div key={i} className="bg-white/5 border border-white/10 backdrop-blur-sm rounded-lg p-6">
+                <div className="space-y-4">
                   <Skeleton className="h-4 w-20 bg-white/20" />
                   <Skeleton className="h-6 w-full bg-white/20" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-16 w-full bg-white/20 mb-4" />
+                  <Skeleton className="h-16 w-full bg-white/20" />
                   <Skeleton className="h-4 w-32 bg-white/20" />
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))
           ) : news.length > 0 ? (
             news.map((article) => (
-              <Card 
-                key={article.guid} 
-                className="bg-white/5 border-white/10 backdrop-blur-sm hover:bg-white/10 transition-all duration-300 hover:scale-105 cursor-pointer group"
-                onClick={() => window.open(article.link, '_blank')}
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge className={`${getSourceColor(article.source)} text-white border-0`}>
-                      {article.source}
-                    </Badge>
-                    <ExternalLink className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
-                  </div>
-                  <CardTitle className="text-white text-lg leading-tight line-clamp-2 group-hover:text-purple-200 transition-colors">
-                    {article.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-white/70 text-sm mb-4 line-clamp-3">
-                    {article.description}
-                  </p>
-                  <div className="flex items-center text-xs text-white/50">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {formatDate(article.pubDate)}
-                  </div>
-                </CardContent>
-              </Card>
+              <NewsCard
+                key={article.guid}
+                article={article}
+                getSourceColor={getSourceColor}
+                formatDate={formatDate}
+              />
             ))
           ) : (
             <div className="col-span-full text-center py-12">
@@ -234,6 +211,10 @@ const Index = () => {
               <div className="h-4 w-px bg-white/30"></div>
               <div className="text-white">
                 <span className="font-bold text-purple-300">Auto-refresh</span> every 10min
+              </div>
+              <div className="h-4 w-px bg-white/30"></div>
+              <div className="text-white">
+                <span className="font-bold text-purple-300">15+ languages</span> supported
               </div>
             </div>
           </div>
