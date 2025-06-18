@@ -6,6 +6,7 @@ import { RefreshCw, Clock, Rss, Smartphone } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import NewsCard from "@/components/NewsCard";
 import { SEO } from "@/components/SEO";
+import { Link } from 'react-router-dom';
 
 interface NewsItem {
   title: string;
@@ -134,6 +135,12 @@ const Index = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                <Link 
+                  to="/forum"
+                  className="text-purple-200 hover:text-white transition-colors duration-200"
+                >
+                  Forum
+                </Link>
                 {lastUpdated && (
                   <div className="text-xs sm:text-sm text-purple-200 flex items-center gap-2">
                     <Clock className="h-3 w-3 sm:h-4 sm:w-4" />

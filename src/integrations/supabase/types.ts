@@ -6,228 +6,101 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
-      comments: {
+      forum_posts: {
         Row: {
-          content: string
-          created_at: string | null
           id: string
-          post_id: string
-          updated_at: string | null
-          user_id: string
+          title: string
+          content: string
+          author_id: string
+          created_at: string
+          updated_at: string
+          upvotes: number
+          downvotes: number
         }
         Insert: {
-          content: string
-          created_at?: string | null
           id?: string
-          post_id: string
-          updated_at?: string | null
-          user_id: string
+          title: string
+          content: string
+          author_id: string
+          created_at?: string
+          updated_at?: string
+          upvotes?: number
+          downvotes?: number
         }
         Update: {
+          id?: string
+          title?: string
           content?: string
-          created_at?: string | null
+          author_id?: string
+          created_at?: string
+          updated_at?: string
+          upvotes?: number
+          downvotes?: number
+        }
+      }
+      forum_comments: {
+        Row: {
+          id: string
+          post_id: string
+          content: string
+          author_id: string
+          parent_id: string | null
+          created_at: string
+          updated_at: string
+          upvotes: number
+          downvotes: number
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          content: string
+          author_id: string
+          parent_id?: string | null
+          created_at?: string
+          updated_at?: string
+          upvotes?: number
+          downvotes?: number
+        }
+        Update: {
           id?: string
           post_id?: string
-          updated_at?: string | null
-          user_id?: string
+          content?: string
+          author_id?: string
+          parent_id?: string | null
+          created_at?: string
+          updated_at?: string
+          upvotes?: number
+          downvotes?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "comments_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "comments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
-      posts: {
+      forum_votes: {
         Row: {
-          category: string | null
-          comments_count: number | null
-          content: string | null
-          created_at: string | null
           id: string
-          image_url: string | null
-          likes_count: number | null
-          retweets_count: number | null
-          updated_at: string | null
           user_id: string
-          video_url: string | null
+          post_id: string | null
+          comment_id: string | null
+          vote_type: 'up' | 'down'
+          created_at: string
         }
         Insert: {
-          category?: string | null
-          comments_count?: number | null
-          content?: string | null
-          created_at?: string | null
           id?: string
-          image_url?: string | null
-          likes_count?: number | null
-          retweets_count?: number | null
-          updated_at?: string | null
           user_id: string
-          video_url?: string | null
+          post_id?: string | null
+          comment_id?: string | null
+          vote_type: 'up' | 'down'
+          created_at?: string
         }
         Update: {
-          category?: string | null
-          comments_count?: number | null
-          content?: string | null
-          created_at?: string | null
           id?: string
-          image_url?: string | null
-          likes_count?: number | null
-          retweets_count?: number | null
-          updated_at?: string | null
           user_id?: string
-          video_url?: string | null
+          post_id?: string | null
+          comment_id?: string | null
+          vote_type?: 'up' | 'down'
+          created_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          bio: string | null
-          email: string | null
-          follower_count: number | null
-          id: string
-          instagram: string | null
-          is_subscribed: boolean | null
-          joined_date: string | null
-          linkedin: string | null
-          location: string | null
-          name: string | null
-          post_consistency_months: number | null
-          twitter: string | null
-          updated_at: string | null
-          username: string | null
-          website: string | null
-          youtube: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          email?: string | null
-          follower_count?: number | null
-          id: string
-          instagram?: string | null
-          is_subscribed?: boolean | null
-          joined_date?: string | null
-          linkedin?: string | null
-          location?: string | null
-          name?: string | null
-          post_consistency_months?: number | null
-          twitter?: string | null
-          updated_at?: string | null
-          username?: string | null
-          website?: string | null
-          youtube?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          email?: string | null
-          follower_count?: number | null
-          id?: string
-          instagram?: string | null
-          is_subscribed?: boolean | null
-          joined_date?: string | null
-          linkedin?: string | null
-          location?: string | null
-          name?: string | null
-          post_consistency_months?: number | null
-          twitter?: string | null
-          updated_at?: string | null
-          username?: string | null
-          website?: string | null
-          youtube?: string | null
-        }
-        Relationships: []
-      }
-      tokens: {
-        Row: {
-          associated_token_account: string | null
-          authorities: Json | null
-          created_at: string | null
-          decimals: number
-          description: string | null
-          id: string
-          logo_url: string | null
-          metadata_uri: string | null
-          mint_address: string
-          name: string
-          network: string
-          status: string
-          supply: number
-          symbol: string
-          transaction_signature: string | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          associated_token_account?: string | null
-          authorities?: Json | null
-          created_at?: string | null
-          decimals?: number
-          description?: string | null
-          id?: string
-          logo_url?: string | null
-          metadata_uri?: string | null
-          mint_address: string
-          name: string
-          network?: string
-          status?: string
-          supply?: number
-          symbol: string
-          transaction_signature?: string | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          associated_token_account?: string | null
-          authorities?: Json | null
-          created_at?: string | null
-          decimals?: number
-          description?: string | null
-          id?: string
-          logo_url?: string | null
-          metadata_uri?: string | null
-          mint_address?: string
-          name?: string
-          network?: string
-          status?: string
-          supply?: number
-          symbol?: string
-          transaction_signature?: string | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tokens_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
@@ -237,9 +110,6 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
       [_ in never]: never
     }
   }
