@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { ArrowUpCircle, ArrowDownCircle, MessageCircle, Share2, Award, MoreHorizontal, Wallet } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, MessageCircle, Share2, Award, MoreHorizontal, Wallet, LogOut } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { forumService } from '@/integrations/supabase/forumService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 interface Post {
@@ -40,29 +40,38 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
     mutationFn: async () => {
       if (!address) throw new Error('Wallet not connected');
 
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        // Create a new user with the wallet address as the identifier
-        const { data: { user: newUser }, error: signUpError } = await supabase.auth.signUp({
-          email: `${address.toLowerCase().slice(2)}@example.com`, // Create a valid email format
-          password: crypto.randomUUID(),
-          options: {
-            data: {
-              username: `${address.slice(0, 6)}...${address.slice(-4)}`, // Create a readable username
-              wallet_address: address,
-              is_wallet_user: true // Flag to identify wallet users
-            }
-          }
-        });
+      try {
+        // First try to find if the user already exists
+        const { data: existingUsers, error: searchError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('wallet_address', address)
+          .single();
 
-        if (signUpError) throw signUpError;
-        if (!newUser) throw new Error('Failed to create user account');
-        
-        return forumService.createPost(title, content, newUser.id);
+        if (searchError && !existingUsers) {
+          // Create a new user in the users table
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert([{
+              wallet_address: address,
+              username: `${address.slice(0, 6)}...${address.slice(-4)}`,
+              is_wallet_user: true
+            }])
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          if (!newUser) throw new Error('Failed to create user');
+
+          return forumService.createPost(title, content, newUser.id);
+        }
+
+        // Use existing user
+        return forumService.createPost(title, content, existingUsers.id);
+      } catch (error) {
+        console.error('Error in post creation:', error);
+        throw error;
       }
-      
-      return forumService.createPost(title, content, user.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -125,6 +134,7 @@ const Forum = () => {
   const queryClient = useQueryClient();
   const { address, isConnected } = useAccount();
   const { open } = useWeb3Modal();
+  const { disconnect } = useDisconnect();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnectWallet = async () => {
@@ -144,6 +154,23 @@ const Forum = () => {
       });
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnectWallet = async () => {
+    try {
+      await disconnect();
+      toast({
+        title: 'Success',
+        description: 'Wallet disconnected successfully!',
+      });
+    } catch (error) {
+      console.error('Wallet disconnection error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to disconnect wallet',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -232,22 +259,30 @@ const Forum = () => {
             Top
           </Button>
         </div>
-        {isConnected ? (
-          <Button onClick={handleCreatePost}>
-            Create Post
-          </Button>
-        ) : (
-          <Button onClick={handleConnectWallet} disabled={isConnecting}>
-            {isConnecting ? (
-              <>Connecting...</>
-            ) : (
-              <>
-                <Wallet className="w-4 h-4 mr-2" />
-                Connect Wallet
-              </>
-            )}
-          </Button>
-        )}
+        <div className="flex items-center space-x-2">
+          {isConnected ? (
+            <>
+              <Button variant="outline" onClick={handleDisconnectWallet}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Disconnect
+              </Button>
+              <Button onClick={handleCreatePost}>
+                Create Post
+              </Button>
+            </>
+          ) : (
+            <Button onClick={handleConnectWallet} disabled={isConnecting}>
+              {isConnecting ? (
+                <>Connecting...</>
+              ) : (
+                <>
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Connect Wallet
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       <CreatePostDialog
