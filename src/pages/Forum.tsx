@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { ArrowUpCircle, ArrowDownCircle, MessageCircle, Share2, Award, MoreHorizontal } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, MessageCircle, Share2, Award, MoreHorizontal, Wallet } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { forumService } from '@/integrations/supabase/forumService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useAccount } from 'wagmi';
+import { WalletKit } from '@reown/walletkit';
+import { Core } from '@walletconnect/core';
 
 interface Post {
   id: string;
@@ -98,6 +101,61 @@ const Forum = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { address, isConnected } = useAccount();
+  const [walletKit, setWalletKit] = useState<any>(null);
+
+  useEffect(() => {
+    const initWalletKit = async () => {
+      try {
+        const core = new Core({
+          projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
+        });
+
+        const kit = await WalletKit.init({
+          core,
+          metadata: {
+            name: 'CryptoNews Forum',
+            description: 'Forum for crypto news and discussions',
+            url: window.location.origin,
+            icons: []
+          }
+        });
+        setWalletKit(kit);
+      } catch (error) {
+        console.error('Failed to initialize WalletKit:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to initialize wallet connection. Please make sure WalletConnect Project ID is configured.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    if (!walletKit) {
+      initWalletKit();
+    }
+  }, []);
+
+  const handleConnectWallet = async () => {
+    if (!walletKit) {
+      toast({
+        title: 'Error',
+        description: 'Wallet connection not initialized',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await walletKit.connect();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to connect wallet',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ['posts', sortBy],
@@ -190,13 +248,24 @@ const Forum = () => {
                   placeholder="Search posts" 
                   className="w-64 bg-gray-800 border-gray-700"
                 />
-                <Button 
-                  variant="default" 
-                  className="bg-orange-500 hover:bg-orange-600"
-                  onClick={() => setIsCreatePostOpen(true)}
-                >
-                  Create Post
-                </Button>
+                {isConnected ? (
+                  <Button 
+                    variant="default" 
+                    className="bg-orange-500 hover:bg-orange-600"
+                    onClick={() => setIsCreatePostOpen(true)}
+                  >
+                    Create Post
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="default" 
+                    className="bg-orange-500 hover:bg-orange-600"
+                    onClick={handleConnectWallet}
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Connect Wallet
+                  </Button>
+                )}
               </div>
             </div>
           </div>

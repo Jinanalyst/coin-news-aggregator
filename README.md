@@ -4,6 +4,19 @@
 
 **URL**: https://lovable.dev/projects/fd980acf-4543-4e4b-a877-f8f5935093a5
 
+## Environment Setup
+
+Before running the project, you need to set up the following environment variables in a `.env` file:
+
+```sh
+# WalletConnect Project ID - Get one at https://cloud.reown.com
+VITE_WALLETCONNECT_PROJECT_ID=your_project_id_here
+
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_url_here
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+```
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
