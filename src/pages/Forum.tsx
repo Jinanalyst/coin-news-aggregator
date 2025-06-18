@@ -35,13 +35,32 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const [content, setContent] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { address } = useAccount();
 
   const createPostMutation = useMutation({
     mutationFn: async () => {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      return forumService.createPost(title, content, user.data.user.id);
+      if (authError || !user) {
+        // If not authenticated with Supabase, create a new user with the wallet address
+        const { data: { user: newUser }, error: signUpError } = await supabase.auth.signUp({
+          email: `${address}@wallet.user`,
+          password: crypto.randomUUID(),
+          options: {
+            data: {
+              username: address?.slice(0, 8),
+              wallet_address: address
+            }
+          }
+        });
+
+        if (signUpError) throw signUpError;
+        if (!newUser) throw new Error('Failed to create user account');
+        
+        return forumService.createPost(title, content, newUser.id);
+      }
+      
+      return forumService.createPost(title, content, user.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -54,6 +73,7 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       setContent('');
     },
     onError: (error) => {
+      console.error('Create post error:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to create post',
@@ -86,7 +106,7 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
               onClick={() => createPostMutation.mutate()}
               disabled={!title || !content || createPostMutation.isPending}
             >
-              Post
+              {createPostMutation.isPending ? 'Creating...' : 'Post'}
             </Button>
           </div>
         </div>
@@ -103,6 +123,7 @@ const Forum = () => {
   const queryClient = useQueryClient();
   const { address, isConnected } = useAccount();
   const [walletKit, setWalletKit] = useState<any>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     const initWalletKit = async () => {
@@ -147,14 +168,35 @@ const Forum = () => {
     }
 
     try {
+      setIsConnecting(true);
       await walletKit.connect();
+      toast({
+        title: 'Success',
+        description: 'Wallet connected successfully!',
+      });
     } catch (error) {
+      console.error('Wallet connection error:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to connect wallet',
         variant: 'destructive',
       });
+    } finally {
+      setIsConnecting(false);
     }
+  };
+
+  const handleCreatePost = () => {
+    if (!isConnected) {
+      toast({
+        title: 'Connect Wallet',
+        description: 'Please connect your wallet to create a post',
+        variant: 'default',
+      });
+      handleConnectWallet();
+      return;
+    }
+    setIsCreatePostOpen(true);
   };
 
   const { data: posts, isLoading } = useQuery({
@@ -248,24 +290,23 @@ const Forum = () => {
                   placeholder="Search posts" 
                   className="w-64 bg-gray-800 border-gray-700"
                 />
-                {isConnected ? (
-                  <Button 
-                    variant="default" 
-                    className="bg-orange-500 hover:bg-orange-600"
-                    onClick={() => setIsCreatePostOpen(true)}
-                  >
-                    Create Post
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="default" 
-                    className="bg-orange-500 hover:bg-orange-600"
-                    onClick={handleConnectWallet}
-                  >
-                    <Wallet className="w-4 h-4 mr-2" />
-                    Connect Wallet
-                  </Button>
-                )}
+                <Button 
+                  variant="default" 
+                  className="bg-orange-500 hover:bg-orange-600"
+                  onClick={handleCreatePost}
+                  disabled={isConnecting}
+                >
+                  {isConnecting ? (
+                    'Connecting...'
+                  ) : !isConnected ? (
+                    <>
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Connect Wallet
+                    </>
+                  ) : (
+                    'Create Post'
+                  )}
+                </Button>
               </div>
             </div>
           </div>
@@ -356,10 +397,13 @@ const Forum = () => {
         </div>
       </div>
 
-      <CreatePostDialog 
-        isOpen={isCreatePostOpen} 
-        onClose={() => setIsCreatePostOpen(false)} 
-      />
+      {/* Create Post Dialog */}
+      {isConnected && (
+        <CreatePostDialog 
+          isOpen={isCreatePostOpen} 
+          onClose={() => setIsCreatePostOpen(false)} 
+        />
+      )}
     </>
   );
 };
