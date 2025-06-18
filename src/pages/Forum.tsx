@@ -43,14 +43,15 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
-        // If not authenticated with Supabase, create a new user with the wallet address
+        // Create a new user with the wallet address as the identifier
         const { data: { user: newUser }, error: signUpError } = await supabase.auth.signUp({
-          email: `${address}@wallet.user`,
+          email: `${address.toLowerCase().slice(2)}@example.com`, // Create a valid email format
           password: crypto.randomUUID(),
           options: {
             data: {
-              username: address?.slice(0, 8),
-              wallet_address: address
+              username: `${address.slice(0, 6)}...${address.slice(-4)}`, // Create a readable username
+              wallet_address: address,
+              is_wallet_user: true // Flag to identify wallet users
             }
           }
         });
