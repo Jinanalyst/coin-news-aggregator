@@ -13,8 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccount } from 'wagmi';
-import { WalletKit } from '@reown/walletkit';
-import { Core } from '@walletconnect/core';
+import { useAppKit } from '@reown/appkit/react';
 
 interface Post {
   id: string;
@@ -39,6 +38,8 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 
   const createPostMutation = useMutation({
     mutationFn: async () => {
+      if (!address) throw new Error('Wallet not connected');
+
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
@@ -122,54 +123,13 @@ const Forum = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { address, isConnected } = useAccount();
-  const [walletKit, setWalletKit] = useState<any>(null);
+  const appKit = useAppKit();
   const [isConnecting, setIsConnecting] = useState(false);
 
-  useEffect(() => {
-    const initWalletKit = async () => {
-      try {
-        const core = new Core({
-          projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
-        });
-
-        const kit = await WalletKit.init({
-          core,
-          metadata: {
-            name: 'CryptoNews Forum',
-            description: 'Forum for crypto news and discussions',
-            url: window.location.origin,
-            icons: []
-          }
-        });
-        setWalletKit(kit);
-      } catch (error) {
-        console.error('Failed to initialize WalletKit:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to initialize wallet connection. Please make sure WalletConnect Project ID is configured.',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    if (!walletKit) {
-      initWalletKit();
-    }
-  }, []);
-
   const handleConnectWallet = async () => {
-    if (!walletKit) {
-      toast({
-        title: 'Error',
-        description: 'Wallet connection not initialized',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
       setIsConnecting(true);
-      await walletKit.connect();
+      await appKit.open();
       toast({
         title: 'Success',
         description: 'Wallet connected successfully!',
@@ -261,23 +221,20 @@ const Forum = () => {
               <div className="flex items-center space-x-4">
                 <h1 className="text-xl font-semibold">CryptoNews Forum</h1>
                 <div className="flex space-x-2">
-                  <Button 
-                    variant="ghost" 
-                    className={sortBy === 'hot' ? 'bg-gray-700' : ''} 
+                  <Button
+                    variant={sortBy === 'hot' ? 'default' : 'outline'}
                     onClick={() => setSortBy('hot')}
                   >
                     Hot
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    className={sortBy === 'new' ? 'bg-gray-700' : ''} 
+                  <Button
+                    variant={sortBy === 'new' ? 'default' : 'outline'}
                     onClick={() => setSortBy('new')}
                   >
                     New
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    className={sortBy === 'top' ? 'bg-gray-700' : ''} 
+                  <Button
+                    variant={sortBy === 'top' ? 'default' : 'outline'}
                     onClick={() => setSortBy('top')}
                   >
                     Top
@@ -290,23 +247,22 @@ const Forum = () => {
                   placeholder="Search posts" 
                   className="w-64 bg-gray-800 border-gray-700"
                 />
-                <Button 
-                  variant="default" 
-                  className="bg-orange-500 hover:bg-orange-600"
-                  onClick={handleCreatePost}
-                  disabled={isConnecting}
-                >
-                  {isConnecting ? (
-                    'Connecting...'
-                  ) : !isConnected ? (
-                    <>
-                      <Wallet className="w-4 h-4 mr-2" />
-                      Connect Wallet
-                    </>
-                  ) : (
-                    'Create Post'
-                  )}
-                </Button>
+                {isConnected ? (
+                  <Button onClick={handleCreatePost}>
+                    Create Post
+                  </Button>
+                ) : (
+                  <Button onClick={handleConnectWallet} disabled={isConnecting}>
+                    {isConnecting ? (
+                      <>Connecting...</>
+                    ) : (
+                      <>
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Connect Wallet
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
