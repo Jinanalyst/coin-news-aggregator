@@ -1,14 +1,12 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+
+# Sitemap location
+Sitemap: https://cryptonews.opinionomics.co.kr/sitemap.xml
+
+# Prevent crawling of error pages
+Disallow: /404
+Disallow: /error
+
+# Rate limiting
+Crawl-delay: 1
