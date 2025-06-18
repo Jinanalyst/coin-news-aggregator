@@ -1,12 +1,11 @@
 'use client';
 
+import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
 import { WagmiConfig } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createAppKit } from '@reown/appkit/react';
-import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 
-// Get projectId from https://cloud.reown.com
+// Get projectId from environment variable
 const projectId = '6d9c2691c2bda3cd52c1bd5e36f59075';
 
 // Configure metadata for your app
@@ -20,26 +19,16 @@ const metadata = {
 // Set up queryClient
 const queryClient = new QueryClient();
 
-// Set up Wagmi adapter
-const wagmiAdapter = new WagmiAdapter({
-  projectId,
-  networks: [mainnet],
-});
+// Configure wagmi client
+const chains = [mainnet];
+const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
 
-// Create AppKit instance
-createAppKit({
-  adapters: [wagmiAdapter],
-  projectId,
-  networks: [mainnet],
-  metadata,
-  features: {
-    analytics: true
-  }
-});
+// Create modal
+createWeb3Modal({ wagmiConfig, projectId, chains });
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   return (
-    <WagmiConfig config={wagmiAdapter.wagmiConfig}>
+    <WagmiConfig config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         {children}
       </QueryClientProvider>

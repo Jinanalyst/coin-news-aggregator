@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useAccount } from 'wagmi';
-import { useAppKit } from '@reown/appkit/react';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 interface Post {
   id: string;
@@ -123,13 +123,13 @@ const Forum = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { address, isConnected } = useAccount();
-  const appKit = useAppKit();
+  const { open } = useWeb3Modal();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnectWallet = async () => {
     try {
       setIsConnecting(true);
-      await appKit.open();
+      await open();
       toast({
         title: 'Success',
         description: 'Wallet connected successfully!',
@@ -208,159 +208,115 @@ const Forum = () => {
   };
 
   return (
-    <>
-      <SEO 
-        title="CryptoNews Hub Forum - Discuss Cryptocurrency News and Trends"
-        description="Join the conversation about cryptocurrency news, market trends, and blockchain technology. Share insights and discuss with the crypto community."
-      />
-      <div className="min-h-screen bg-[#1a1a1b] text-gray-200">
-        {/* Header */}
-        <div className="sticky top-0 z-50 bg-[#1a1a1b] border-b border-gray-700">
-          <div className="container mx-auto px-4 py-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <h1 className="text-xl font-semibold">CryptoNews Forum</h1>
-                <div className="flex space-x-2">
-                  <Button
-                    variant={sortBy === 'hot' ? 'default' : 'outline'}
-                    onClick={() => setSortBy('hot')}
-                  >
-                    Hot
-                  </Button>
-                  <Button
-                    variant={sortBy === 'new' ? 'default' : 'outline'}
-                    onClick={() => setSortBy('new')}
-                  >
-                    New
-                  </Button>
-                  <Button
-                    variant={sortBy === 'top' ? 'default' : 'outline'}
-                    onClick={() => setSortBy('top')}
-                  >
-                    Top
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Input 
-                  type="search" 
-                  placeholder="Search posts" 
-                  className="w-64 bg-gray-800 border-gray-700"
-                />
-                {isConnected ? (
-                  <Button onClick={handleCreatePost}>
-                    Create Post
-                  </Button>
-                ) : (
-                  <Button onClick={handleConnectWallet} disabled={isConnecting}>
-                    {isConnecting ? (
-                      <>Connecting...</>
-                    ) : (
-                      <>
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Connect Wallet
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+    <div className="container mx-auto px-4 py-8">
+      <SEO title="Forum - Crypto News" />
+      <div className="flex justify-between items-center mb-8">
+        <div className="space-x-2">
+          <Button
+            variant={sortBy === 'hot' ? 'default' : 'outline'}
+            onClick={() => setSortBy('hot')}
+          >
+            Hot
+          </Button>
+          <Button
+            variant={sortBy === 'new' ? 'default' : 'outline'}
+            onClick={() => setSortBy('new')}
+          >
+            New
+          </Button>
+          <Button
+            variant={sortBy === 'top' ? 'default' : 'outline'}
+            onClick={() => setSortBy('top')}
+          >
+            Top
+          </Button>
         </div>
-
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-4">
-          <div className="max-w-3xl mx-auto">
-            {isLoading ? (
-              // Loading skeletons
-              Array.from({ length: 3 }).map((_, i) => (
-                <Card key={i} className="mb-4 bg-[#272729] border-gray-700 animate-pulse">
-                  <div className="p-4">
-                    <div className="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
-                    <div className="h-4 bg-gray-700 rounded w-1/2"></div>
-                  </div>
-                </Card>
-              ))
-            ) : posts?.map((post: Post) => (
-              <Card 
-                key={post.id} 
-                className="mb-4 bg-[#272729] border-gray-700 hover:border-gray-500 cursor-pointer"
-                onClick={() => navigate(`/forum/post/${post.id}`)}
-              >
-                <div className="flex p-4">
-                  {/* Voting */}
-                  <div className="flex flex-col items-center mr-4 space-y-1">
-                    <button 
-                      className="text-gray-400 hover:text-orange-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        voteMutation.mutate({ postId: post.id, voteType: 'up' });
-                      }}
-                    >
-                      <ArrowUpCircle size={20} />
-                    </button>
-                    <span className="text-sm font-medium">
-                      {formatNumber(post.upvotes - post.downvotes)}
-                    </span>
-                    <button 
-                      className="text-gray-400 hover:text-blue-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        voteMutation.mutate({ postId: post.id, voteType: 'down' });
-                      }}
-                    >
-                      <ArrowDownCircle size={20} />
-                    </button>
-                  </div>
-
-                  {/* Post Content */}
-                  <div className="flex-1">
-                    <div className="flex items-center text-xs text-gray-400 mb-2">
-                      <span className="font-medium text-gray-300">Posted by u/{post.author.username}</span>
-                      <span className="mx-1">•</span>
-                      <span>{formatTimeAgo(post.created_at)}</span>
-                    </div>
-                    <h2 className="text-lg font-medium mb-2">{post.title}</h2>
-                    <p className="text-gray-300 mb-3">{post.content}</p>
-                    <div className="flex items-center space-x-4 text-gray-400">
-                      <button 
-                        className="flex items-center space-x-1 hover:bg-gray-700 px-2 py-1 rounded"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/forum/post/${post.id}`);
-                        }}
-                      >
-                        <MessageCircle size={18} />
-                        <span>{formatNumber(post.comments[0]?.count || 0)} Comments</span>
-                      </button>
-                      <button className="flex items-center space-x-1 hover:bg-gray-700 px-2 py-1 rounded">
-                        <Share2 size={18} />
-                        <span>Share</span>
-                      </button>
-                      <button className="flex items-center space-x-1 hover:bg-gray-700 px-2 py-1 rounded">
-                        <Award size={18} />
-                        <span>Award</span>
-                      </button>
-                      <button className="hover:bg-gray-700 px-2 py-1 rounded">
-                        <MoreHorizontal size={18} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
+        {isConnected ? (
+          <Button onClick={handleCreatePost}>
+            Create Post
+          </Button>
+        ) : (
+          <Button onClick={handleConnectWallet} disabled={isConnecting}>
+            {isConnecting ? (
+              <>Connecting...</>
+            ) : (
+              <>
+                <Wallet className="w-4 h-4 mr-2" />
+                Connect Wallet
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
-      {/* Create Post Dialog */}
-      {isConnected && (
-        <CreatePostDialog 
-          isOpen={isCreatePostOpen} 
-          onClose={() => setIsCreatePostOpen(false)} 
-        />
-      )}
-    </>
+      <CreatePostDialog
+        isOpen={isCreatePostOpen}
+        onClose={() => setIsCreatePostOpen(false)}
+      />
+
+      <div className="space-y-4">
+        {isLoading ? (
+          <div>Loading posts...</div>
+        ) : posts && posts.length > 0 ? (
+          posts.map((post) => (
+            <Card key={post.id} className="p-4">
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => voteMutation.mutate({ postId: post.id, voteType: 'up' })}
+                  >
+                    <ArrowUpCircle className="h-5 w-5" />
+                  </Button>
+                  <span>{post.upvotes - post.downvotes}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => voteMutation.mutate({ postId: post.id, voteType: 'down' })}
+                  >
+                    <ArrowDownCircle className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <Avatar className="h-6 w-6">
+                      <img src={post.author.avatar_url || '/placeholder.svg'} alt={post.author.username} />
+                    </Avatar>
+                    <span>{post.author.username}</span>
+                    <span>•</span>
+                    <span>{formatTimeAgo(post.created_at)}</span>
+                  </div>
+                  <h3 className="text-lg font-semibold mt-2">{post.title}</h3>
+                  <p className="mt-2 text-gray-600">{post.content}</p>
+                  <div className="flex items-center space-x-4 mt-4">
+                    <Button variant="ghost" size="sm" className="text-gray-500">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {post.comments?.length || 0} Comments
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-gray-500">
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-gray-500">
+                      <Award className="h-4 w-4 mr-2" />
+                      Award
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-gray-500 ml-auto">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No posts yet. Be the first to create one!</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
