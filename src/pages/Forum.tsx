@@ -40,11 +40,15 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const createPostMutation = useMutation({
     mutationFn: async () => {
       if (!address) throw new Error('Wallet not connected');
+      
+      console.log('Creating post with wallet address:', address);
+      console.log('Title:', title);
+      console.log('Content:', content);
 
-      // Use the wallet address as the author ID directly
       return forumService.createPost(title, content, address);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Post created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       toast({
         title: 'Post created!',
@@ -63,6 +67,18 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       });
     },
   });
+
+  const handleSubmit = () => {
+    if (!title.trim() || !content.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in both title and content',
+        variant: 'destructive',
+      });
+      return;
+    }
+    createPostMutation.mutate();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -85,7 +101,7 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button 
-              onClick={() => createPostMutation.mutate()}
+              onClick={handleSubmit}
               disabled={!title || !content || createPostMutation.isPending}
             >
               {createPostMutation.isPending ? 'Creating...' : 'Post'}
@@ -158,10 +174,12 @@ const Forum = () => {
     setIsCreatePostOpen(true);
   };
 
-  const { data: posts, isLoading } = useQuery({
+  const { data: posts, isLoading, error } = useQuery({
     queryKey: ['posts', sortBy],
     queryFn: () => forumService.getPosts(sortBy),
   });
+
+  console.log('Posts query result:', { posts, isLoading, error });
 
   const voteMutation = useMutation({
     mutationFn: async ({ postId, voteType }: { postId: string; voteType: 'up' | 'down' }) => {
@@ -211,11 +229,9 @@ const Forum = () => {
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <img 
-              src="/lovable-uploads/2e40a778-406c-49a2-a4f1-b096cc1671af.png" 
-              alt="Crypto News Hub Logo" 
-              className="h-12 w-auto"
-            />
+            <div className="h-12 w-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">CN</span>
+            </div>
             <h1 className="text-2xl font-bold text-gray-900">Crypto Forum</h1>
           </div>
           <div className="space-x-2">
@@ -242,6 +258,9 @@ const Forum = () => {
         <div className="flex items-center space-x-2">
           {isConnected ? (
             <>
+              <span className="text-sm text-gray-600">
+                Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
+              </span>
               <Button variant="outline" onClick={handleDisconnectWallet}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Disconnect
@@ -272,7 +291,13 @@ const Forum = () => {
 
       <div className="space-y-4">
         {isLoading ? (
-          <div>Loading posts...</div>
+          <div className="text-center py-8">
+            <p className="text-gray-500">Loading posts...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-red-500">Error loading posts: {error.message}</p>
+          </div>
         ) : posts && posts.length > 0 ? (
           posts.map((post) => (
             <Card key={post.id} className="p-4">
@@ -282,14 +307,16 @@ const Forum = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => voteMutation.mutate({ postId: post.id, voteType: 'up' })}
+                    disabled={!isConnected}
                   >
                     <ArrowUpCircle className="h-5 w-5" />
                   </Button>
-                  <span>{post.upvotes - post.downvotes}</span>
+                  <span className="font-medium">{(post.upvotes || 0) - (post.downvotes || 0)}</span>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => voteMutation.mutate({ postId: post.id, voteType: 'down' })}
+                    disabled={!isConnected}
                   >
                     <ArrowDownCircle className="h-5 w-5" />
                   </Button>
@@ -297,7 +324,9 @@ const Forum = () => {
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
                     <Avatar className="h-6 w-6">
-                      <img src={post.author.avatar_url || '/placeholder.svg'} alt={post.author.username} />
+                      <div className="h-6 w-6 bg-gray-300 rounded-full flex items-center justify-center">
+                        <span className="text-xs">{post.author.username.slice(0, 2).toUpperCase()}</span>
+                      </div>
                     </Avatar>
                     <span>{post.author.username}</span>
                     <span>•</span>
@@ -329,6 +358,12 @@ const Forum = () => {
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-500">No posts yet. Be the first to create one!</p>
+            {!isConnected && (
+              <Button onClick={handleConnectWallet} className="mt-4">
+                <Wallet className="w-4 h-4 mr-2" />
+                Connect Wallet to Post
+              </Button>
+            )}
           </div>
         )}
       </div>

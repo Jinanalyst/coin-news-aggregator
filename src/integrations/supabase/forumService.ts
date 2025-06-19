@@ -1,3 +1,4 @@
+
 import { supabase } from './client';
 import { Database } from './types';
 
@@ -8,6 +9,8 @@ type Vote = Database['public']['Tables']['forum_votes']['Row'];
 export const forumService = {
   // Posts
   async getPosts(sortBy: 'new' | 'hot' | 'top' = 'hot') {
+    console.log('Fetching posts with sortBy:', sortBy);
+    
     let query = supabase
       .from('forum_posts')
       .select(`
@@ -30,52 +33,72 @@ export const forumService = {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    
+    console.log('Posts query result:', { data, error });
+    
+    if (error) {
+      console.error('Error fetching posts:', error);
+      throw error;
+    }
     
     // Add mock author data since we don't have a users table
-    return data?.map(post => ({
+    const postsWithAuthors = data?.map(post => ({
       ...post,
       author: {
         username: `User_${post.author_id?.slice(-8) || 'Unknown'}`,
         avatar_url: '/placeholder.svg'
       }
     })) || [];
+    
+    console.log('Posts with authors:', postsWithAuthors);
+    return postsWithAuthors;
   },
 
   async createPost(title: string, content: string, authorId: string) {
-    console.log('Creating post with authorId:', authorId);
+    console.log('Creating post with parameters:', { title, content, authorId });
+    
+    const postData = {
+      title: title.trim(),
+      content: content.trim(),
+      author_id: authorId,
+      upvotes: 0,
+      downvotes: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log('Inserting post data:', postData);
     
     const { data, error } = await supabase
       .from('forum_posts')
-      .insert({
-        title,
-        content,
-        author_id: authorId,
-        upvotes: 0,
-        downvotes: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .insert(postData)
       .select()
       .single();
 
     console.log('Create post result:', { data, error });
+    
     if (error) {
       console.error('Create post error details:', error);
-      throw error;
+      throw new Error(`Failed to create post: ${error.message}`);
     }
+    
     return data;
   },
 
   // Comments
   async getComments(postId: string) {
+    console.log('Fetching comments for post:', postId);
+    
     const { data, error } = await supabase
       .from('forum_comments')
       .select('*')
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching comments:', error);
+      throw error;
+    }
     
     // Add mock author data since we don't have a users table
     return data?.map(comment => ({
@@ -88,11 +111,13 @@ export const forumService = {
   },
 
   async createComment(postId: string, content: string, authorId: string, parentId?: string) {
+    console.log('Creating comment with parameters:', { postId, content, authorId, parentId });
+    
     const { data, error } = await supabase
       .from('forum_comments')
       .insert({
         post_id: postId,
-        content,
+        content: content.trim(),
         author_id: authorId,
         parent_id: parentId,
         upvotes: 0,
@@ -101,22 +126,29 @@ export const forumService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Create comment error:', error);
+      throw error;
+    }
     return data;
   },
 
   // Votes
   async vote(userId: string, voteType: 'up' | 'down', postId?: string, commentId?: string) {
+    console.log('Voting with parameters:', { userId, voteType, postId, commentId });
+    
     // First check if user has already voted
     const { data: existingVote } = await supabase
       .from('forum_votes')
       .select()
       .match({
         user_id: userId,
-        post_id: postId,
-        comment_id: commentId
+        post_id: postId || null,
+        comment_id: commentId || null
       })
       .single();
+
+    console.log('Existing vote:', existingVote);
 
     if (existingVote) {
       if (existingVote.vote_type === voteType) {
@@ -126,11 +158,14 @@ export const forumService = {
           .delete()
           .match({
             user_id: userId,
-            post_id: postId,
-            comment_id: commentId
+            post_id: postId || null,
+            comment_id: commentId || null
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error removing vote:', error);
+          throw error;
+        }
       } else {
         // Change vote type if clicking different button
         const { error } = await supabase
@@ -138,11 +173,14 @@ export const forumService = {
           .update({ vote_type: voteType })
           .match({
             user_id: userId,
-            post_id: postId,
-            comment_id: commentId
+            post_id: postId || null,
+            comment_id: commentId || null
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating vote:', error);
+          throw error;
+        }
       }
     } else {
       // Create new vote
@@ -150,12 +188,15 @@ export const forumService = {
         .from('forum_votes')
         .insert({
           user_id: userId,
-          post_id: postId,
-          comment_id: commentId,
+          post_id: postId || null,
+          comment_id: commentId || null,
           vote_type: voteType
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating vote:', error);
+        throw error;
+      }
     }
 
     // Update vote counts on post or comment
@@ -172,7 +213,7 @@ export const forumService = {
 
       await supabase
         .from('forum_posts')
-        .update({ upvotes, downvotes })
+        .update({ upvotes: upvotes || 0, downvotes: downvotes || 0 })
         .eq('id', postId);
     }
 
@@ -189,7 +230,7 @@ export const forumService = {
 
       await supabase
         .from('forum_comments')
-        .update({ upvotes, downvotes })
+        .update({ upvotes: upvotes || 0, downvotes: downvotes || 0 })
         .eq('id', commentId);
     }
   }
