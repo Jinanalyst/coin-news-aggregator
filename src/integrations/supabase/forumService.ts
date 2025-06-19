@@ -1,10 +1,23 @@
-
 import { supabase } from './client';
 import { Database } from './types';
 
 type Post = Database['public']['Tables']['forum_posts']['Row'];
 type Comment = Database['public']['Tables']['forum_comments']['Row'];
 type Vote = Database['public']['Tables']['forum_votes']['Row'];
+
+// Helper to upload files to Supabase Storage and return URLs
+export async function uploadFilesToSupabase(files: File[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const file of files) {
+    const fileExt = file.name.split('.').pop();
+    const filePath = `forum-uploads/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const { data, error } = await supabase.storage.from('public').upload(filePath, file);
+    if (error) throw error;
+    const { publicURL } = supabase.storage.from('public').getPublicUrl(filePath).data;
+    if (publicURL) urls.push(publicURL);
+  }
+  return urls;
+}
 
 export const forumService = {
   // Posts
@@ -54,34 +67,29 @@ export const forumService = {
     return postsWithAuthors;
   },
 
-  async createPost(title: string, content: string, authorId: string) {
-    console.log('Creating post with parameters:', { title, content, authorId });
-    
+  async createPost(title: string, content: string, authorId: string, mediaUrls: string[] = []) {
+    console.log('Creating post with parameters:', { title, content, authorId, mediaUrls });
     const postData = {
       title: title.trim(),
       content: content.trim(),
       author_id: authorId,
+      media_urls: mediaUrls,
       upvotes: 0,
       downvotes: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    
     console.log('Inserting post data:', postData);
-    
     const { data, error } = await supabase
       .from('forum_posts')
       .insert(postData)
       .select()
       .single();
-
     console.log('Create post result:', { data, error });
-    
     if (error) {
       console.error('Create post error details:', error);
       throw new Error(`Failed to create post: ${error.message}`);
     }
-    
     return data;
   },
 

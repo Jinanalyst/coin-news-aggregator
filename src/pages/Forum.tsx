@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +5,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { ArrowUpCircle, ArrowDownCircle, MessageCircle, Share2, Award, MoreHorizontal, Wallet, LogOut } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { forumService } from '@/integrations/supabase/forumService';
+import { forumService, uploadFilesToSupabase } from '@/integrations/supabase/forumService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +14,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { useAccount, useDisconnect } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { TipButton } from '@/components/TipButton';
+import { MembershipPlansDialog } from '@/components/MembershipPlansDialog';
+
+function linkify(text: string) {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
+    part.match(/https?:\/\//) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1' }}>{part}</a>
+    ) : (
+      part
+    )
+  );
+}
 
 interface Post {
   id: string;
@@ -28,27 +40,40 @@ interface Post {
   upvotes: number;
   downvotes: number;
   comments: { count: number }[];
+  wallet_address?: string;
 }
 
 const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { address } = useAccount();
+  const { publicKey, connected: solanaConnected } = useWallet();
+  const { address: ethAddress, isConnected: ethConnected } = useAccount();
+  const isWalletConnected = (solanaConnected && publicKey) || (ethConnected && ethAddress);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
+    }
+  };
 
   const createPostMutation = useMutation({
     mutationFn: async () => {
-      if (!address) throw new Error('Wallet not connected');
-      
-      console.log('Creating post with wallet address:', address);
-      console.log('Title:', title);
-      console.log('Content:', content);
-
-      return forumService.createPost(title, content, address);
+      if (!isWalletConnected) throw new Error('Wallet not connected');
+      const authorAddress = solanaConnected && publicKey
+        ? publicKey.toBase58()
+        : ethConnected && ethAddress
+          ? ethAddress
+          : '';
+      let mediaUrls: string[] = [];
+      if (files.length > 0) {
+        mediaUrls = await uploadFilesToSupabase(files);
+      }
+      return forumService.createPost(title, content, authorAddress, mediaUrls);
     },
     onSuccess: (data) => {
-      console.log('Post created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       toast({
         title: 'Post created!',
@@ -57,9 +82,9 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       onClose();
       setTitle('');
       setContent('');
+      setFiles([]);
     },
     onError: (error) => {
-      console.error('Create post error:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to create post',
@@ -98,6 +123,20 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
             onChange={(e) => setContent(e.target.value)}
             rows={5}
           />
+          <input
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={handleFileChange}
+          />
+          {/* Show previews */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {files.map((file, idx) => file.type.startsWith('image') ? (
+              <img key={idx} src={URL.createObjectURL(file)} alt="preview" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6 }} />
+            ) : file.type.startsWith('video') ? (
+              <video key={idx} src={URL.createObjectURL(file)} style={{ width: 60, height: 60, borderRadius: 6 }} controls />
+            ) : null)}
+          </div>
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button 
@@ -116,6 +155,8 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 const Forum = () => {
   const [sortBy, setSortBy] = useState<'hot' | 'new' | 'top'>('hot');
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [isPlansOpen, setIsPlansOpen] = useState(false);
+  const [canPost, setCanPost] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -123,6 +164,11 @@ const Forum = () => {
   const { open } = useWeb3Modal();
   const { disconnect } = useDisconnect();
   const [isConnecting, setIsConnecting] = useState(false);
+  const { publicKey, connected: solanaConnected } = useWallet();
+  const { address: ethAddress, isConnected: ethConnected } = useAccount();
+  const isWalletConnected = (solanaConnected && publicKey) || (ethConnected && ethAddress);
+  const [userPlan, setUserPlan] = useState<string>('free');
+  const [hasSelectedPlan, setHasSelectedPlan] = useState(false);
 
   const handleConnectWallet = async () => {
     try {
@@ -161,17 +207,46 @@ const Forum = () => {
     }
   };
 
+  const handleConnectWalletToPost = async () => {
+    if (!solanaConnected) {
+      await handleConnectWallet();
+      // After connection, check membership
+      if (solanaConnected && !(userPlan === 'free' || userPlan === 'pro' || userPlan === 'premium')) {
+        setIsPlansOpen(true);
+      }
+      return;
+    }
+    if (!(userPlan === 'free' || userPlan === 'pro' || userPlan === 'premium')) {
+      setIsPlansOpen(true);
+      return;
+    }
+    setCanPost(true);
+    setIsCreatePostOpen(true);
+  };
+
   const handleCreatePost = () => {
-    if (!isConnected) {
+    if (!isWalletConnected) {
       toast({
         title: 'Connect Wallet',
         description: 'Please connect your wallet to create a post',
         variant: 'default',
       });
-      handleConnectWallet();
       return;
     }
+    if (!(userPlan === 'free' || userPlan === 'pro' || userPlan === 'premium')) {
+      setIsPlansOpen(true);
+      return;
+    }
+    setCanPost(true);
     setIsCreatePostOpen(true);
+  };
+
+  const handlePlanSuccess = (plan: string) => {
+    setUserPlan(plan);
+    setCanPost(true);
+    setIsCreatePostOpen(true);
+    setIsPlansOpen(false);
+    setHasSelectedPlan(true);
   };
 
   const { data: posts, isLoading, error } = useQuery({
@@ -284,9 +359,10 @@ const Forum = () => {
         </div>
       </div>
 
+      <MembershipPlansDialog open={isPlansOpen} onClose={() => setIsPlansOpen(false)} onSuccess={handlePlanSuccess} />
       <CreatePostDialog
-        isOpen={isCreatePostOpen}
-        onClose={() => setIsCreatePostOpen(false)}
+        isOpen={isCreatePostOpen && canPost}
+        onClose={() => { setIsCreatePostOpen(false); setCanPost(false); }}
       />
 
       <div className="space-y-4">
@@ -333,7 +409,7 @@ const Forum = () => {
                     <span>{formatTimeAgo(post.created_at)}</span>
                   </div>
                   <h3 className="text-lg font-semibold mt-2">{post.title}</h3>
-                  <p className="mt-2 text-gray-600">{post.content}</p>
+                  <div>{linkify(post.content)}</div>
                   <div className="flex items-center space-x-4 mt-4">
                     <Button variant="ghost" size="sm" className="text-gray-500">
                       <MessageCircle className="h-4 w-4 mr-2" />
@@ -350,6 +426,9 @@ const Forum = () => {
                     <Button variant="ghost" size="sm" className="text-gray-500 ml-auto">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
+                    {post.wallet_address && (
+                      <TipButton recipient={post.wallet_address} />
+                    )}
                   </div>
                 </div>
               </div>
