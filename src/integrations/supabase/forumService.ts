@@ -12,7 +12,7 @@ export const forumService = {
       .from('forum_posts')
       .select(`
         *,
-        author:profiles(username, avatar_url),
+        author:users(username, avatar_url),
         comments:forum_comments(count),
         votes:forum_votes(count)
       `);
