@@ -37,18 +37,21 @@ export const forumService = {
     return data?.map(post => ({
       ...post,
       author: {
-        username: `User_${post.author_id?.slice(-8) || 'Unknown'}`,
+        username: `User_${post.author_id?.toString().slice(-8) || 'Unknown'}`,
         avatar_url: '/placeholder.svg'
       }
     })) || [];
   },
 
   async createPost(title: string, content: string, authorId: string) {
+    console.log('Creating post with authorId:', authorId);
+    
     const { data, error } = await supabase
       .from('forum_posts')
       .insert({
         title,
         content,
+        // Convert wallet address to a consistent format for author_id
         author_id: authorId,
         upvotes: 0,
         downvotes: 0,
@@ -58,7 +61,11 @@ export const forumService = {
       .select()
       .single();
 
-    if (error) throw error;
+    console.log('Create post result:', { data, error });
+    if (error) {
+      console.error('Create post error details:', error);
+      throw error;
+    }
     return data;
   },
 
