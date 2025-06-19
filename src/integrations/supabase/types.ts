@@ -254,15 +254,7 @@ export type Database = {
           updated_at?: string | null
           upvotes?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "forum_posts_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       forum_votes: {
         Row: {
