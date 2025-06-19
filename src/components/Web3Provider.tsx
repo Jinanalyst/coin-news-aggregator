@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
@@ -19,12 +20,19 @@ const metadata = {
 // Set up queryClient
 const queryClient = new QueryClient();
 
-// Configure wagmi client
-const chains = [mainnet];
-const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
+// Configure wagmi client with proper chain format
+const chains = [mainnet] as const;
+const wagmiConfig = defaultWagmiConfig({ 
+  chains, 
+  projectId, 
+  metadata 
+});
 
-// Create modal
-createWeb3Modal({ wagmiConfig, projectId, chains });
+// Create modal with correct configuration
+createWeb3Modal({ 
+  wagmiConfig, 
+  projectId 
+});
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   return (
@@ -34,4 +42,4 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       </QueryClientProvider>
     </WagmiConfig>
   );
-} 
+}
