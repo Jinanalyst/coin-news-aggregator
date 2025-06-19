@@ -1,4 +1,3 @@
-
 import { supabase } from './client';
 import { Database } from './types';
 
@@ -37,7 +36,7 @@ export const forumService = {
     return data?.map(post => ({
       ...post,
       author: {
-        username: `User_${post.author_id?.toString().slice(-8) || 'Unknown'}`,
+        username: `User_${post.author_id?.slice(-8) || 'Unknown'}`,
         avatar_url: '/placeholder.svg'
       }
     })) || [];
@@ -51,7 +50,6 @@ export const forumService = {
       .insert({
         title,
         content,
-        // Convert wallet address to a consistent format for author_id
         author_id: authorId,
         upvotes: 0,
         downvotes: 0,

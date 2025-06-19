@@ -210,11 +210,14 @@ const Forum = () => {
       <SEO title="Forum - Crypto News" />
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center space-x-4">
-          <img 
-            src="/lovable-uploads/2e40a778-406c-49a2-a4f1-b096cc1671af.png" 
-            alt="Crypto News Hub Logo" 
-            className="h-12 w-auto"
-          />
+          <div className="flex items-center space-x-2">
+            <img 
+              src="/lovable-uploads/2e40a778-406c-49a2-a4f1-b096cc1671af.png" 
+              alt="Crypto News Hub Logo" 
+              className="h-12 w-auto"
+            />
+            <h1 className="text-2xl font-bold text-gray-900">Crypto Forum</h1>
+          </div>
           <div className="space-x-2">
             <Button
               variant={sortBy === 'hot' ? 'default' : 'outline'}
