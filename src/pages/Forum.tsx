@@ -40,38 +40,8 @@ const CreatePostDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
     mutationFn: async () => {
       if (!address) throw new Error('Wallet not connected');
 
-      try {
-        // First try to find if the user already exists
-        const { data: existingUsers, error: searchError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('wallet_address', address)
-          .single();
-
-        if (searchError && !existingUsers) {
-          // Create a new user in the users table
-          const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert([{
-              wallet_address: address,
-              username: `${address.slice(0, 6)}...${address.slice(-4)}`,
-              is_wallet_user: true
-            }])
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          if (!newUser) throw new Error('Failed to create user');
-
-          return forumService.createPost(title, content, newUser.id);
-        }
-
-        // Use existing user
-        return forumService.createPost(title, content, existingUsers.id);
-      } catch (error) {
-        console.error('Error in post creation:', error);
-        throw error;
-      }
+      // Use the wallet address as the author ID directly
+      return forumService.createPost(title, content, address);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -194,10 +164,9 @@ const Forum = () => {
 
   const voteMutation = useMutation({
     mutationFn: async ({ postId, voteType }: { postId: string; voteType: 'up' | 'down' }) => {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Please sign in to vote');
+      if (!address) throw new Error('Please connect your wallet to vote');
       
-      return forumService.vote(user.data.user.id, voteType, postId);
+      return forumService.vote(address, voteType, postId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -356,4 +325,4 @@ const Forum = () => {
   );
 };
 
-export default Forum; 
+export default Forum;

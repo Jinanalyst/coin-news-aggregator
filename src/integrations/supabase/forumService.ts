@@ -1,3 +1,4 @@
+
 import { supabase } from './client';
 import { Database } from './types';
 
@@ -12,7 +13,6 @@ export const forumService = {
       .from('forum_posts')
       .select(`
         *,
-        author:users(username, avatar_url),
         comments:forum_comments(count),
         votes:forum_votes(count)
       `);
@@ -32,7 +32,15 @@ export const forumService = {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    
+    // Add mock author data since we don't have a users table
+    return data?.map(post => ({
+      ...post,
+      author: {
+        username: `User_${post.author_id?.slice(-8) || 'Unknown'}`,
+        avatar_url: '/placeholder.svg'
+      }
+    })) || [];
   },
 
   async createPost(title: string, content: string, authorId: string) {
@@ -43,7 +51,9 @@ export const forumService = {
         content,
         author_id: authorId,
         upvotes: 0,
-        downvotes: 0
+        downvotes: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -56,15 +66,20 @@ export const forumService = {
   async getComments(postId: string) {
     const { data, error } = await supabase
       .from('forum_comments')
-      .select(`
-        *,
-        author:profiles(username, avatar_url)
-      `)
+      .select('*')
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    return data;
+    
+    // Add mock author data since we don't have a users table
+    return data?.map(comment => ({
+      ...comment,
+      author: {
+        username: `User_${comment.author_id?.slice(-8) || 'Unknown'}`,
+        avatar_url: '/placeholder.svg'
+      }
+    })) || [];
   },
 
   async createComment(postId: string, content: string, authorId: string, parentId?: string) {
@@ -173,4 +188,4 @@ export const forumService = {
         .eq('id', commentId);
     }
   }
-}; 
+};
