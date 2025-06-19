@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -208,25 +209,32 @@ const Forum = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO title="Forum - Crypto News" />
       <div className="flex justify-between items-center mb-8">
-        <div className="space-x-2">
-          <Button
-            variant={sortBy === 'hot' ? 'default' : 'outline'}
-            onClick={() => setSortBy('hot')}
-          >
-            Hot
-          </Button>
-          <Button
-            variant={sortBy === 'new' ? 'default' : 'outline'}
-            onClick={() => setSortBy('new')}
-          >
-            New
-          </Button>
-          <Button
-            variant={sortBy === 'top' ? 'default' : 'outline'}
-            onClick={() => setSortBy('top')}
-          >
-            Top
-          </Button>
+        <div className="flex items-center space-x-4">
+          <img 
+            src="/lovable-uploads/2e40a778-406c-49a2-a4f1-b096cc1671af.png" 
+            alt="Crypto News Hub Logo" 
+            className="h-12 w-auto"
+          />
+          <div className="space-x-2">
+            <Button
+              variant={sortBy === 'hot' ? 'default' : 'outline'}
+              onClick={() => setSortBy('hot')}
+            >
+              Hot
+            </Button>
+            <Button
+              variant={sortBy === 'new' ? 'default' : 'outline'}
+              onClick={() => setSortBy('new')}
+            >
+              New
+            </Button>
+            <Button
+              variant={sortBy === 'top' ? 'default' : 'outline'}
+              onClick={() => setSortBy('top')}
+            >
+              Top
+            </Button>
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           {isConnected ? (
